@@ -15,16 +15,17 @@ def init_db():
             """
             CREATE TABLE IF NOT EXISTS games (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT NOT NULL,
-                word TEXT NOT NULL,
+                username TEXT,
+                word TEXT,
                 word_length INTEGER NOT NULL,
-                won INTEGER NOT NULL,
-                attempts_used INTEGER NOT NULL,
-                wrong_guesses INTEGER NOT NULL,
-                max_lives INTEGER NOT NULL,
-                remaining_lives INTEGER NOT NULL,
+                category TEXT,
+                won INTEGER,
+                attempts_used INTEGER,
+                wrong_guesses INTEGER,
+                max_lives INTEGER,
+                remaining_lives INTEGER,
                 duration_sec REAL,
-                timestamp TEXT NOT NULL
+                timestamp TEXT
             )
             """
         )
@@ -40,33 +41,97 @@ def log_game(
     max_lives: int,
     remaining_lives: int,
     duration_sec: float | None = None,
+    category: str | None = None,
 ):
-    """Insert a finished game into the database."""
+    """
+    Insert a finished game into the database.
+
+    Handles different schemas gracefully:
+    - with word_length + category
+    - with word_length only
+    - with neither (oldest schema)
+    """
     timestamp = datetime.datetime.utcnow().isoformat()
+    word_length = len(word) if word else 0
 
     with closing(sqlite3.connect(DB_PATH)) as conn:
-        conn.execute(
-            """
-            INSERT INTO games (
-                username, word, word_length, won, attempts_used,
-                wrong_guesses, max_lives, remaining_lives,
-                duration_sec, timestamp
+        cur = conn.cursor()
+
+        # 1) Try full modern schema: word_length + category
+        try:
+            cur.execute(
+                """
+                INSERT INTO games (
+                    username, word, word_length, category, won,
+                    attempts_used, wrong_guesses,
+                    max_lives, remaining_lives, duration_sec, timestamp
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    username,
+                    word,
+                    word_length,
+                    category,
+                    won,
+                    attempts_used,
+                    wrong_guesses,
+                    max_lives,
+                    remaining_lives,
+                    duration_sec,
+                    timestamp,
+                ),
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                username,
-                word,
-                len(word),
-                1 if won else 0,
-                attempts_used,
-                wrong_guesses,
-                max_lives,
-                remaining_lives,
-                duration_sec,
-                timestamp,
-            ),
-        )
+        except Exception:
+            # 2) Try schema with word_length but no category
+            try:
+                cur.execute(
+                    """
+                    INSERT INTO games (
+                        username, word, word_length, won,
+                        attempts_used, wrong_guesses,
+                        max_lives, remaining_lives, duration_sec, timestamp
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """
+                    ,
+                    (
+                        username,
+                        word,
+                        word_length,
+                        won,
+                        attempts_used,
+                        wrong_guesses,
+                        max_lives,
+                        remaining_lives,
+                        duration_sec,
+                        timestamp,
+                    ),
+                )
+            except Exception:
+                # 3) Oldest schema: no word_length, no category
+                cur.execute(
+                    """
+                    INSERT INTO games (
+                        username, word, won,
+                        attempts_used, wrong_guesses,
+                        max_lives, remaining_lives, duration_sec, timestamp
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        username,
+                        word,
+                        won,
+                        attempts_used,
+                        wrong_guesses,
+                        max_lives,
+                        remaining_lives,
+                        duration_sec,
+                        timestamp,
+                    ),
+                )
+
         conn.commit()
 
 
