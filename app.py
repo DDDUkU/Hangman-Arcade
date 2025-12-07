@@ -1,5 +1,5 @@
 """
-Hangman Analytics Arcade — Enhanced Streamlit app (emoji-free visuals)
+Hangman Analytics Arcade — Enhanced Streamlit app 
 
 This file is a modified version of your app. Changes:
  - Replaced emoji usage with inline SVG icons / neutral text
@@ -21,7 +21,7 @@ import plotly.graph_objects as go
 import storage
 
 # --------------------------
-# ASCII Art from hangman_art.py (kept unchanged)
+# ASCII Art from hangman_art.py 
 # --------------------------
 STAGES = ['''
   +---+
@@ -845,9 +845,6 @@ if page == "Play":
                 if st.button("Play Again", use_container_width=True):
                     start_new_game()
 
-# --------------------------
-# ANALYTICS PAGE
-# --------------------------
 # --------------------------
 # ANALYTICS PAGE
 # --------------------------
